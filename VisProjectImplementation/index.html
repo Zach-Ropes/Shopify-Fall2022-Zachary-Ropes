@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<!--
+  Course: DATA 300L 111 Spring 2020
+  Author: Zachary Ropes and Dean Esposito
+-->
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+
+  <script type="text/javascript" src="d3.js"></script>
+  <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+  <link href="css/finalimplementation.css" rel="stylesheet" />
+  <title>NBA Statistics Visualization</title>
+
+
+  <script>
+    window.onload = () => {
+
+
+      //Width and height
+      var w = 1300;
+      var h = 300;
+      var padding = 50;
+
+
+
+      //For converting Dates to strings
+      var formatTime = d3.timeFormat("%Y");
+
+      //Read the data
+      d3.csv("data/players.csv", function(data) {
+        d3.csv("data/salaries_1985to2018.csv", function(data1) {
+
+          var dataset, xScale, yScale, xAxis, yAxis, area, line;
+
+
+          //
+          // DATA PARSING
+          //
+
+          console.log(data);
+          console.log(data1[1].player_id);
+
+          //Make dataset an empty array, so we can start adding values
+          dataset = [];
+
+          for (var i = 1; i < data1.length; i++) {
+            for (var j = 1; j < data.length; j++) {
+              if (data1[i].player_id == data[j]._id) {
+                //console.log(data1[i].player_id)
+                var name = data[j].name;
+                var salary = data1[i].salary;
+                var season = data1[i].season;
+                var season_end = new Date(data1[i].season_end);
+                var career_pts = data[j].career_PTS;
+                var career_ast = data[j].career_AST;
+                var career_rb = data[j].career_TRB;
+                var career_per = data[j].career_PER;
+                var position = data[j].position;
+                var weight = data[j].weight;
+                var height = data[j].height;
+
+
+                //Append a new object with data for this for the salary chart
+                dataset[i - 5] = {
+                  "name": name,
+                  "salary": salary,
+                  "season": season,
+                  "season_end": season_end,
+                  "career_pts": career_pts,
+                  "career_ast": career_ast,
+                  "career_rb": career_rb,
+                  "career_per": career_per,
+                  "position": position,
+                  "weight": weight,
+                  "height": height
+                };
+              }
+            }
+          }
+
+
+          //Log out the final state of dataset
+          console.log(dataset);
+          console.log(d3.min(dataset, function(d) {
+            return d.salary;
+          }));
+
+          // group the data: I want to draw one line per name
+          var sumstat = d3.nest()
+            .key(function(d) {
+              return d.name;
+            })
+            .entries(dataset);
+
+
+          //Create scale functions
+          xScale = d3.scaleTime()
+            .domain([
+              d3.min(dataset, function(d) {
+                return d.season_end;
+              }),
+              d3.max(dataset, function(d) {
+                return d.season_end;
+              })
+            ])
+            .range([padding, w - 50]);
+
+
+          yScale = d3.scaleLinear()
+            .domain([
+              0,
+              d3.max(dataset, function(d) {
+                return d.salary / 1000000;
+              })
+            ])
+            .range([h - padding, 0]);
+
+
+          //Define axes
+          xAxis = d3.axisBottom()
+            .scale(xScale)
+            .ticks(33)
+            .tickFormat(formatTime);
+
+          //Define Y axis
+          yAxis = d3.axisLeft()
+            .scale(yScale)
+            .ticks(10);
+
+          //Define line generators
+          line = d3.line()
+            .x(function(d) {
+              return xScale(d.season_end);
+            })
+            .y(function(d) {
+              return yScale(d.salary);
+            });
+
+          //Create SVG element
+          var svg = d3.select("#line-chart")
+            .append("svg")
+            .attr("width", w)
+            .attr("height", h)
+
+          d3.select("#line-chart").append("figcaption")
+            .text("Salaries of every NBA player from 1985 to 2018. Y axis shows dollars in millions. Also features on-capabilties where the line will display on the second chart for easy comparisons between players.");
+
+          //Create axes
+          svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + (h - padding) + ")")
+            .call(xAxis);
+
+          svg.append("g")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + padding + ",0)")
+            .call(yAxis);
+
+          // text label for the x axis
+          svg.append("text")
+            .attr("transform",
+              "translate(" + (w / 2) + " ," +
+              h + ")")
+            .style("text-anchor", "middle")
+            .text("Season");
+
+          // text label for the y axis
+          svg.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0)
+            .attr("x", 0 - (h / 2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .text("Dollars in Millions");
+
+          console.log(sumstat);
+
+          // Draw the lines, will change colors later
+          svg.selectAll("line")
+            .data(sumstat)
+            .enter()
+            .append("path")
+            .attr("fill", "none")
+            .attr("stroke", function(d) {
+              return "rgb(0, " + Math.round(d.values[0].career_ast * 10) + ", " + Math.round(d.values[0].career_pts * 5) + ")";
+            })
+            .attr("stroke-width", 2)
+            .attr("d", function(d) {
+              return d3.line()
+                .x(function(d) {
+                  return xScale(d.season_end);
+                })
+                .y(function(d) {
+                  return yScale(d.salary / 1000000);
+                })
+                (d.values)
+            })
+            .on("mouseover", function(d) {
+              //const d = d3.select(this).datum();
+              console.log(d.values[0].salary);
+              const pos = d3.mouse(this);
+              var salary = 0;
+              for (var i = 0; i < d.values.length; i++) {
+                salary += parseInt(d.values[i].salary);
+              }
+              salary = Math.round(salary / d.values.length);
+              d3.select("#tooltip")
+                .style("left", pos[0] - 30 + "px")
+                .style("top", pos[1] - 20 + "px")
+                .select("#value")
+                .text(d.key + " Career Stats:")
+              d3.select("#tooltip")
+                .select("#value1")
+                .text("Position: " + d.values[0].position);
+              d3.select("#tooltip")
+                .select("#value2")
+                .text("Points: " + d.values[0].career_pts + "    Assists: " + d.values[0].career_ast);
+              d3.select("#tooltip")
+                .select("#value3")
+                .text("Rebounds: " + d.values[0].career_rb + "    Player Efficiency Rating: " + d.values[0].career_per);
+              d3.select("#tooltip")
+                .select("#value4")
+                .text("Height: " + d.values[0].height + "       Weight: " + d.values[0].weight);
+              d3.select("#tooltip")
+                .select("#value5")
+                .text("Average Career Salary: $" + numberWithCommas(salary));
+
+              //Show the tooltip
+              d3.select("#tooltip").classed("hidden", false);
+            })
+            .on("mouseout", () => {
+              //Hide the tooltip
+              d3.select("#tooltip").classed("hidden", true);
+            })
+            .on("click", function(d) {
+              update(d.key)
+            });
+
+          // List of groups
+          var allGroup = d3.map(dataset, function(d) {
+            return (d.name)
+          }).keys()
+
+          // add the options to the button
+          d3.select("#selectButton")
+            .selectAll('myOptions')
+            .data(allGroup)
+            .enter()
+            .append('option')
+            .text(function(d) {
+              return d;
+            })
+            .attr("value", function(d) {
+              return d;
+            })
+
+          // A color scale: one color for each group
+          var myColor = d3.scaleOrdinal()
+            .domain(allGroup)
+            .range(d3.schemeSet2);
+
+          // Second svg element
+          var svg2 = d3.select("#line-comparison")
+            .append("svg")
+            .attr("width", w)
+            .attr("height", h)
+
+          d3.select("#line-comparison").append("figcaption")
+            .text("Compares the salaries of selected NBA athletes based on filter choices. Also includes hover-over features which gives various stats over each player's career.");
+
+          //Create axes
+          svg2.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + (h - padding) + ")")
+            .call(xAxis);
+
+          svg2.append("g")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + padding + ",0)")
+            .call(yAxis);
+
+          // text label for the x axis
+          svg2.append("text")
+            .attr("transform",
+              "translate(" + (w / 2) + " ," +
+              h + ")")
+            .style("text-anchor", "middle")
+            .text("Season");
+
+          // text label for the y axis
+          svg2.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0)
+            .attr("x", 0 - (h / 2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .text("Dollars in Millions");
+
+
+          console.log(dataset.filter(function(d) {
+            return d.name == allGroup[0]
+          }));
+          /*
+          var line = svg2
+            .append('g')
+            .append("path")
+            .datum(dataset.filter(function(d) {
+              return d.name == allGroup[0]
+            }))
+            .attr("d", d3.line()
+
+              .x(function(d) {
+                console.log("hello");
+                return xScale(d.season_end);
+              })
+              .y(function(d) {
+                return yScale(d.salary / 1000000);
+              })
+            )
+            .attr("stroke", function(d) {
+              return myColor("valueA")
+            })
+            .style("stroke-width", 4)
+            .style("fill", "none")
+            .on("mouseover", function(d) {
+              //const d = d3.select(this).datum();
+              const pos = d3.mouse(this);
+              var salary = 0;
+              for (var i = 0; i < d.length; i++) {
+                salary += parseInt(d[i].salary);
+              }
+              salary = Math.round(salary / d.length);
+              d3.select("#tooltip")
+                .style("left", pos[0] - 30 + "px")
+                .style("top", pos[1] + 500 + "px")
+                .select("#value")
+                .text(d[0].name + " Career Stats:")
+              d3.select("#tooltip")
+                .select("#value1")
+                .text("Position: " + d[0].position);
+              d3.select("#tooltip")
+                .select("#value2")
+                .text("Points: " + d[0].career_pts + "    Assists: " + d[0].career_ast);
+              d3.select("#tooltip")
+                .select("#value3")
+                .text("Rebounds: " + d[0].career_rb + "    Player Efficiency Rating: " + d[0].career_per);
+              d3.select("#tooltip")
+                .select("#value4")
+                .text("Height: " + d[0].height + "       Weight: " + d[0].weight);
+              d3.select("#tooltip")
+                .select("#value5")
+                .text("Average Career Salary: $" + numberWithCommas(salary));
+
+              //Show the tooltip
+              d3.select("#tooltip").classed("hidden", false);
+            })
+            .on("mouseout", () => {
+              //Hide the tooltip
+              d3.select("#tooltip").classed("hidden", true);
+            })
+            */
+
+          function update(selectedGroup) {
+
+            // Create new data with the selection?
+            var dataFilter = dataset.filter(function(d) {
+              return d.name == selectedGroup
+            })
+
+
+            // Give these new data to update line
+            svg2
+              .append('g')
+              .append("path")
+              .datum(dataFilter)
+              .attr("d", d3.line()
+                .x(function(d) {
+                  return xScale(d.season_end);
+                })
+                .y(function(d) {
+                  return yScale(d.salary / 1000000);
+                })
+              )
+              .attr("stroke", function(d) {
+                return myColor(selectedGroup)
+              })
+              .style("stroke-width", 4)
+              .style("fill", "none")
+              .on("mouseover", function(d) {
+                //const d = d3.select(this).datum();
+                const pos = d3.mouse(this);
+                var salary = 0;
+                for (var i = 0; i < d.length; i++) {
+                  salary += parseInt(d[i].salary);
+                }
+                salary = Math.round(salary / d.length);
+                d3.select("#tooltip")
+                  .style("left", pos[0] - 30 + "px")
+                  .style("top", pos[1] + 450 + "px")
+                  .select("#value")
+                  .text(d[0].name + " Career Stats:")
+                d3.select("#tooltip")
+                  .select("#value1")
+                  .text("Position: " + d[0].position);
+                d3.select("#tooltip")
+                  .select("#value2")
+                  .text("Points: " + d[0].career_pts + "    Assists: " + d[0].career_ast);
+                d3.select("#tooltip")
+                  .select("#value3")
+                  .text("Rebounds: " + d[0].career_rb + "    Player Efficiency Rating: " + d[0].career_per);
+                d3.select("#tooltip")
+                  .select("#value4")
+                  .text("Height: " + d[0].height + "       Weight: " + d[0].weight);
+                d3.select("#tooltip")
+                  .select("#value5")
+                  .text("Average Career Salary: $" + numberWithCommas(salary));
+
+                //Show the tooltip
+                d3.select("#tooltip").classed("hidden", false);
+              })
+              .on("mouseout", () => {
+                //Hide the tooltip
+                d3.select("#tooltip").classed("hidden", true);
+              })
+          }
+
+          // When the button is changed, run the updateChart function
+          d3.select("#selectButton").on("change", function(d) {
+            // recover the option that has been chosen
+            var selectedOption = d3.select(this).property("value")
+            // run the updateChart function with this selected option
+            update(selectedOption)
+          })
+
+          function numberWithCommas(x) {
+            return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+          }
+        })
+      })
+
+
+
+
+
+
+
+
+
+      d3.csv("data/nba_salary_cap.csv", function(data) {
+        // group the data: I want to draw one line per name
+        var dataset, xScale, yScale, xAxis, yAxis, area, line;
+        dataset = data;
+
+        var h2 = 600;
+
+        for (var x = 0; x < dataset.length; x++) {
+          dataset[x].season = new Date(parseInt(dataset[x].season) + 1 + "");
+        }
+
+        console.log(d3.max(dataset, function(d) {
+          return d.total_salary / 1000000;
+        }));
+
+        var sumstat = d3.nest()
+          .key(function(d) {
+            return d.team;
+          })
+          .entries(dataset);
+
+
+        //Create scale functions
+        xScale = d3.scaleTime()
+          .domain([
+            d3.min(dataset, function(d) {
+              return d.season;
+            }),
+            d3.max(dataset, function(d) {
+              return d.season;
+            })
+          ])
+          .range([padding, w - 50]);
+
+
+        yScale = d3.scaleLinear()
+          .domain([
+            0,
+            d3.max(dataset, function(d) {
+              return d.total_salary / 1000000;
+            })
+          ])
+          .range([h2 - padding, 0]);
+
+
+        //Define axes
+        xAxis = d3.axisBottom()
+          .scale(xScale)
+          .ticks(28)
+          .tickFormat(formatTime);
+
+        //Define Y axis
+        yAxis = d3.axisLeft()
+          .scale(yScale)
+          .ticks(20);
+
+        //Define line generators
+        line = d3.line()
+          .x(function(d) {
+            return xScale(d.season);
+          })
+          .y(function(d) {
+            return yScale(d.total_salary);
+          });
+
+        //Create SVG element
+        var svg = d3.select("#team-line-chart")
+          .append("svg")
+          .attr("width", w)
+          .attr("height", h2)
+
+        d3.select("#team-line-chart").append("figcaption")
+          .text("Salaries of every NBA  from teams total salary to players from 1990 to 2018. Y axis shows dollars in millions. Also features on-capabilties where the line will display on the second chart for easy comparisons between teams.");
+
+        //Create axes
+        svg.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + (h2 - padding) + ")")
+          .call(xAxis);
+
+        svg.append("g")
+          .attr("class", "y axis")
+          .attr("transform", "translate(" + padding + ",0)")
+          .call(yAxis);
+
+        // text label for the x axis
+        svg.append("text")
+          .attr("transform",
+            "translate(" + (w / 2) + " ," +
+            h2 + ")")
+          .style("text-anchor", "middle")
+          .text("Season");
+
+        // text label for the y axis
+        svg.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 0)
+          .attr("x", 0 - (h2 / 2))
+          .attr("dy", "1em")
+          .style("text-anchor", "middle")
+          .text("Dollars in Millions");
+
+
+        console.log(dataset[0]);
+
+        // Draw the lines, will change colors later
+        svg.selectAll(".line")
+          .data(sumstat)
+          .enter()
+          .append("path")
+          .attr("fill", "none")
+          .attr("stroke", function(d) {
+            return "rgb(0, 0, " + Math.round(d.values[0].total_salary / 100000) + ")";
+          })
+          .attr("stroke-width", 2)
+          .attr("d", function(d) {
+            return d3.line()
+              .x(function(d) {
+                return xScale(d.season);
+              })
+              .y(function(d) {
+                return yScale(d.total_salary / 1000000);
+              })(d.values)
+          })
+          .on("mouseover", function(d) {
+            //const d = d3.select(this).datum();
+            console.log(d.key);
+            const pos = d3.mouse(this);
+            console.log(pos[0])
+            d3.select("#tooltip1")
+              .style("left", pos[0] + 80 + "px")
+              .style("top", pos[1] + 100 + "px")
+              .select("#value6")
+              .text(d.key)
+
+            //Show the tooltip
+            d3.select("#tooltip1").classed("hidden", false);
+          })
+          .on("mouseout", () => {
+            //Hide the tooltip
+            d3.select("#tooltip1").classed("hidden", true);
+          })
+          .on("click", function(d) {
+            update2(d.key)
+          });
+
+        var allGroup = d3.map(dataset, function(d) {
+          return (d.team)
+        }).keys()
+
+        // add the options to the button
+        d3.select("#selectButton2")
+          .selectAll('myOptions')
+          .data(allGroup)
+          .enter()
+          .append('option')
+          .text(function(d) {
+            return d;
+          })
+          .attr("value", function(d) {
+            return d;
+          })
+
+        // A color scale: one color for each group
+        var myColor = d3.scaleOrdinal()
+          .domain(allGroup)
+          .range(d3.schemeSet2);
+
+        // Second svg element
+        var svg2 = d3.select("#team-line-comparison")
+          .append("svg")
+          .attr("width", w)
+          .attr("height", h2)
+
+        d3.select("#team-line-comparison").append("figcaption")
+          .text("Compares the team salaries of selected NBA teams based on filter choices. Also includes hover-over features which gives each teams name.");
+
+        //Create axes
+        svg2.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + (h2 - padding) + ")")
+          .call(xAxis);
+
+        svg2.append("g")
+          .attr("class", "y axis")
+          .attr("transform", "translate(" + padding + ",0)")
+          .call(yAxis);
+
+        // text label for the x axis
+        svg2.append("text")
+          .attr("transform",
+            "translate(" + (w / 2) + " ," +
+            h2 + ")")
+          .style("text-anchor", "middle")
+          .text("Season");
+
+        // text label for the y axis
+        svg2.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 0)
+          .attr("x", 0 - (h2 / 2))
+          .attr("dy", "1em")
+          .style("text-anchor", "middle")
+          .text("Dollars in Millions");
+
+        function update2(selectedGroup) {
+
+          // Create new data with the selection?
+          var dataFilter = dataset.filter(function(d) {
+            return d.team == selectedGroup
+          })
+
+
+          // Give these new data to update line
+          svg2
+            .append('g')
+            .append("path")
+            .datum(dataFilter)
+            .attr("d", d3.line()
+              .x(function(d) {
+                return xScale(d.season);
+              })
+              .y(function(d) {
+                return yScale(d.total_salary / 1000000);
+              })
+            )
+            .attr("stroke", function(d) {
+              return myColor(selectedGroup)
+            })
+            .style("stroke-width", 4)
+            .style("fill", "none")
+            .on("mouseover", function(d) {
+              const pos = d3.mouse(this);
+              console.log(pos[0])
+              d3.select("#tooltip1")
+                .style("left", pos[0] + 70 + "px")
+                .style("top", pos[1] + 900 + "px")
+                .select("#value6")
+                .text(d[0].team)
+
+              //Show the tooltip
+              d3.select("#tooltip1").classed("hidden", false);
+            })
+            .on("mouseout", () => {
+              //Hide the tooltip
+              d3.select("#tooltip1").classed("hidden", true);
+            })
+        }
+
+
+        // When the button is changed, run the updateChart function
+        d3.select("#selectButton2").on("change", function(d) {
+          // recover the option that has been chosen
+          var selectedOption = d3.select(this).property("value")
+          // run the updateChart function with this selected option
+          update2(selectedOption)
+        })
+      })
+
+    }
+  </script>
+</head>
+
+<body>
+  <h1>NBA Statistics Visualization</h1>
+  <h4>By Dean Esposito and Zachary Ropes</h4>
+  <div id="buttons">
+    <button onclick="teamHide()">Show Player Data</button><button onclick="playerHide()">Show Team Data</button>
+  </div>
+  <div id="tooltip" class="hidden">
+    <p><strong id="value"></strong></p>
+    <p><span id="value1"></span></p>
+    <p><span id="value2"></span></p>
+    <p><span id="value3"></span></p>
+    <p><span id="value4"></span></p>
+    <p><span id="value5"></span></p>
+  </div>
+  <div id="tooltip1" class="hidden">
+    <p><strong id="value6"></strong></p>
+  </div>
+  <div id="playerData">
+    <h2>How much have Player Salaries inflated since 1985?</h2>
+    <p>Shows the overall course of inflation of the NBA for as long as it has been tracked over the last few decades.</p>
+
+    <figure id="line-chart"></figure>
+    <h2>Comparing players salaries throughout NBA history.</h2>
+    <br>
+    <div id="button">
+      <select id="selectButton"></select>
+    </div>
+    <figure id="line-comparison"></figure>
+    <div id="sources">
+      <h2>Sources</h2>
+      <ul>
+        <li><a href="https://data.world/datadavis/nba-salaries/workspace/file?filename=players.csv">Data.World - NBA Players</a></li>
+        <li><a href="https://data.world/datadavis/nba-salaries/workspace/file?filename=salaries_1985to2018.csv">Data.World - NBA Salaries</a></li>
+      </ul>
+    </div>
+  </div>
+  <div id="teamData" style="display:none">
+    <h2>How much have total team salaries inflated over the years?</h2>
+    <p>Shows the overall course of inflation of the NBA teams salary and salary for as long as it has been tracked over the last few decades.</p>
+    <figure id="team-line-chart"></figure>
+    <h2>Comparing team salary payment throughout NBA history.</h2>
+    <br>
+    <div id="button">
+      <select id="selectButton2"></select>
+    </div>
+    <figure id="team-line-comparison"></figure>
+    <div id="sources">
+      <h2>Sources</h2>
+      <ul>
+        <li><a href="https://data.world/makeovermonday/2018w29-historical-nba-team-spending-against-the-cap/workspace/file?filename=NBA_Salary_History.xlsx">Data.World - NBA Team Salary Cap History</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    function playerHide() {
+      document.getElementById("playerData").style.display = "none";
+      document.getElementById("teamData").style.display = "block";
+    }
+
+    function teamHide() {
+      document.getElementById("teamData").style.display = "none";
+      document.getElementById("playerData").style.display = "block";
+    }
+  </script>
+</body></html>

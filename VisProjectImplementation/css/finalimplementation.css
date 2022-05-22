@@ -1,0 +1,158 @@
+body {
+  background-color: darkgrey;
+}
+
+h1,
+h2 {
+  font-family: 'Public Sans', san-serif;
+  color: darkslateblue;
+}
+
+h1,
+h4 {
+  text-align: center;
+}
+
+h2 {
+  width: 85%;
+  margin: auto;
+}
+
+#sources {
+  text-align: center
+}
+
+h4 {
+  font-style: italic;
+
+}
+
+figure {
+  text-align: center
+}
+
+#line-chart #details {
+  visibility: hidden;
+  dominant-baseline: ideoodgraphic;
+  text-anchor: middle;
+  font-size: 12px;
+  fill: #239;
+}
+
+#line-chart path {
+  opacity: 0.3;
+
+}
+
+#line-chart path:hover {
+  opacity: 1.0;
+  stroke-width: 3px;
+  stroke: red;
+}
+
+#line-comparison path:hover {
+  opacity: 1.0;
+  stroke-width: 4px;
+  stroke: red;
+}
+
+#team-line-chart path:hover {
+  opacity: 1.0;
+  stroke-width: 3px;
+  stroke: red;
+}
+
+#team-line-comparison path:hover {
+  opacity: 1.0;
+  stroke-width: 4px;
+  stroke: red;
+}
+
+#line-chart .x.axis text.title {
+  dominant-baseline: ideographic;
+}
+
+#line-chart .y.axis text.title {
+  dominant-baseline: hanging;
+}
+
+figcaption {
+  font-style: italic;
+  margin-top: 0.5em;
+}
+
+svg {
+  background-color: #eee;
+  border: 1px solid lightgray;
+  padding: 1em;
+  display: inline-block;
+  vertical-align: top;
+}
+
+
+#tooltip {
+  position: absolute;
+  width: auto;
+  height: auto;
+  padding: 10px;
+  background-color: white;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 10px;
+  -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+#tooltip.hidden {
+  display: none;
+}
+
+#tooltip p {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+#tooltip1 {
+  position: absolute;
+  width: 200px;
+  height: auto;
+  padding: 10px;
+  background-color: white;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 10px;
+  -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+#tooltip1.hidden {
+  display: none;
+}
+
+#tooltip1 p {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+#button,
+p {
+  width: 80%;
+  margin: auto;
+}
+
+ul {
+  width: 15%;
+  margin: auto;
+}
+
+#buttons {
+  text-align: center;
+}
